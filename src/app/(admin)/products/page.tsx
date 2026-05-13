@@ -16,7 +16,7 @@ export default function ProductsPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select('*, product_videos(video_url)')
       .order('created_at', { ascending: false });
       
     if (error) {

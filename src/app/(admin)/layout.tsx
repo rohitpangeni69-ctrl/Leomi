@@ -8,12 +8,9 @@ import { createClient } from "@/src/lib/supabase/client";
 export const dynamic = 'force-dynamic';
 
 const navItems = [
-
   { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Products", href: "/admin/products", icon: Package },
   { title: "Orders", href: "/admin/orders", icon: ShoppingCart },
-  { title: "Promo Videos", href: "/admin/videos", icon: Video },
-  { title: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

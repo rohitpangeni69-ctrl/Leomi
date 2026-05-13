@@ -37,7 +37,6 @@ export function Navbar() {
             </span>
             Explore Reels
           </Link>
-          <Link href="/vendors" className="hover:text-black">Brands</Link>
           <Link href="/category/men" className="hover:text-black">Men</Link>
           <Link href="/category/women" className="hover:text-black">Women</Link>
           <Link href="/#trending" className="hover:text-black font-semibold">Trending</Link>

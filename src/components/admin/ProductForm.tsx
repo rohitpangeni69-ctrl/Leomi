@@ -18,6 +18,7 @@ const productSchema = z.object({
   stock_quantity: z.coerce.number().int().min(0, "Stock cannot be negative"),
   is_active: z.boolean().default(true),
   thumbnail_url: z.string().url().optional().or(z.literal("")),
+  video_url: z.string().url().optional().or(z.literal("")),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -49,6 +50,7 @@ export function ProductForm({
       stock_quantity: initialData?.stock_quantity || 0,
       is_active: initialData?.is_active ?? true,
       thumbnail_url: initialData?.thumbnail_url || "",
+      video_url: initialData?.product_videos?.[0]?.video_url || "",
     },
   });
 
@@ -59,24 +61,42 @@ export function ProductForm({
       // Ensure we have a vendor_id, mock to own id for single-vendor start
       if (!user.user) throw new Error("Not authenticated");
 
+      const { video_url, ...productData } = data;
+
       const payload = {
-        ...data,
+        ...productData,
         vendor_id: user.user.id,
       };
 
-      if (initialData?.id) {
+      let productId = initialData?.id;
+
+      if (productId) {
         const { error } = await supabase
           .from("products")
           .update(payload)
-          .eq("id", initialData.id);
+          .eq("id", productId);
         
         if (error) throw error;
         toast.success("Product updated successfully!");
       } else {
-        const { error } = await supabase.from("products").insert([payload]);
+        const { data: newProduct, error } = await supabase.from("products").insert([payload]).select().single();
         if (error) throw error;
+        productId = newProduct.id;
         toast.success("Product created successfully!");
         reset();
+      }
+
+      // Handle video URL
+      if (video_url) {
+        const { data: existingVid } = await supabase.from("product_videos").select("id").eq("product_id", productId).single();
+        if (existingVid) {
+          await supabase.from("product_videos").update({ video_url }).eq("id", existingVid.id);
+        } else {
+          await supabase.from("product_videos").insert({ product_id: productId, video_url, is_featured: true });
+        }
+      } else if (productId) {
+        // If empty, delete videos (simplified)
+        await supabase.from("product_videos").delete().eq("product_id", productId);
       }
 
       router.refresh();
@@ -150,12 +170,22 @@ export function ProductForm({
         </div>
         
         <div className="space-y-2 col-span-2">
-          <label className="text-sm font-medium">Thumbnail URL</label>
+          <label className="text-sm font-medium">Thumbnail URL (Image)</label>
           <input
             {...register("thumbnail_url")}
             className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500"
             placeholder="https://..."
           />
+        </div>
+
+        <div className="space-y-2 col-span-2">
+          <label className="text-sm font-medium">Promo Video URL (TikTok/Reels style vertical MP4)</label>
+          <input
+            {...register("video_url")}
+            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:border-blue-500"
+            placeholder="https://..."
+          />
+          {errors.video_url && <p className="text-xs text-red-500">{errors.video_url.message}</p>}
         </div>
 
         <div className="flex items-center space-x-2 col-span-2">
