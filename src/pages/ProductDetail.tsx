@@ -1,20 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice, cn } from '../lib/utils';
-import { MOCK_PRODUCTS } from '../lib/mockData';
+import { getProduct } from '../lib/api';
+import { Product } from '../types';
+import { SEO } from '../components/SEO';
+import { RecommendedProducts } from '../components/RecommendedProducts';
+import { Heart } from 'lucide-react';
+import { useWishlistStore } from '../store/wishlistStore';
+import { useAuthStore } from '../lib/firebase';
+import { logProductInteraction } from '../lib/recommendations';
 
 export const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const addItem = useCartStore(state => state.addItem);
+  const { toggleItem, isInWishlist } = useWishlistStore();
+  const { user } = useAuthStore();
   
-  const product = MOCK_PRODUCTS.find(p => p.id === id);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState('');
   
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    if (id) {
+      getProduct(id).then(data => {
+        setProduct(data);
+        setLoading(false);
+        if (data && user) {
+          logProductInteraction(user.uid, id, 'view');
+        }
+      });
+    }
+  }, [id, user]);
+
+  useEffect(() => {
+    if (!product || !product.flashSaleEndTime || product.flashSaleEndTime < Date.now()) return;
+    const updateTime = () => {
+      const diff = product.flashSaleEndTime! - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('');
+        return;
+      }
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setTimeLeft(`${h}h ${m}m ${s}s`);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [product]);
+
+  if (loading) {
+    return <div className="max-w-7xl mx-auto px-4 py-24 text-center">Loading product...</div>;
+  }
 
   if (!product) {
     return (
@@ -25,6 +70,28 @@ export const ProductDetail = () => {
     );
   }
 
+  const isWished = isInWishlist(product.id);
+  const isFlashSale = product.flashSaleEndTime && product.flashSaleEndTime > Date.now();
+  const outOfStock = !product.inStock || (product.stock !== undefined && product.stock <= 0);
+
+  const handleWishlist = async () => {
+    if (!user) {
+      toast.error('Please login to add to wishlist');
+      return;
+    }
+    try {
+      await toggleItem(product.id);
+      if (!isWished) {
+        toast.success('Added to wishlist');
+        logProductInteraction(user.uid, product.id, 'wishlist');
+      } else {
+        toast.success('Removed from wishlist');
+      }
+    } catch (error) {
+      toast.error('Failed to update wishlist');
+    }
+  };
+
   const handleAddToCart = () => {
     if (!selectedSize || !selectedColor) {
       toast.error('Please select size and color');
@@ -34,13 +101,20 @@ export const ProductDetail = () => {
       ...product,
       quantity,
       selectedSize,
-      selectedColor
+      selectedColor,
+      price: (isFlashSale && product.flashSalePrice) ? product.flashSalePrice : product.price
     });
     toast.success('Added to cart');
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <>
+      <SEO 
+        title={`${product.name} | LEOMI`} 
+        description={product.description}
+        image={product.images[0]} 
+      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="lg:grid lg:grid-cols-2 lg:gap-x-8 lg:items-start">
         {/* Image gallery */}
         <div className="flex flex-col-reverse">
@@ -54,11 +128,34 @@ export const ProductDetail = () => {
         </div>
 
         {/* Product info */}
-        <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-serif">{product.name}</h1>
-          <div className="mt-3">
-            <p className="text-2xl tracking-tight text-gray-900">{formatPrice(product.price)}</p>
+        <div className="mt-10 px-4 sm:px-0 sm:mt-16 lg:mt-0 relative">
+          <div className="flex justify-between items-start">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 font-serif pr-12">{product.name}</h1>
+            <button 
+              onClick={handleWishlist}
+              className="absolute top-0 right-0 p-2 bg-white hover:bg-gray-50 rounded-full transition-colors border border-gray-200"
+            >
+              <Heart className={`h-6 w-6 ${isWished ? 'fill-red-500 text-red-500' : 'text-gray-400'}`} />
+            </button>
           </div>
+
+          <div className="mt-3 flex items-end space-x-4">
+            {isFlashSale && product.flashSalePrice ? (
+              <>
+                <p className="text-3xl tracking-tight text-red-600 font-bold">{formatPrice(product.flashSalePrice)}</p>
+                <p className="text-xl text-gray-400 line-through">{formatPrice(product.price)}</p>
+              </>
+            ) : (
+              <p className="text-2xl tracking-tight text-gray-900">{formatPrice(product.price)}</p>
+            )}
+          </div>
+          
+          {isFlashSale && timeLeft && (
+            <div className="mt-4 bg-red-50 border border-red-100 rounded-md p-3 flex items-center justify-between">
+              <span className="text-red-800 font-medium text-sm">⚡ Flash Sale</span>
+              <span className="bg-red-600 text-white font-mono text-sm px-2 py-1 rounded font-bold">Ends in {timeLeft}</span>
+            </div>
+          )}
 
           <div className="mt-6">
             <h3 className="sr-only">Description</h3>
@@ -115,14 +212,17 @@ export const ProductDetail = () => {
 
             <button
               type="submit"
-              disabled={!product.inStock}
+              disabled={outOfStock}
               className="mt-8 flex w-full items-center justify-center rounded-md border border-transparent bg-gray-900 px-8 py-3 text-base font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {product.inStock ? 'Add to Cart' : 'Out of Stock'}
+              {outOfStock ? 'Out of Stock' : 'Add to Cart'}
             </button>
           </form>
         </div>
       </div>
+      
+      <RecommendedProducts />
     </div>
+    </>
   );
 };

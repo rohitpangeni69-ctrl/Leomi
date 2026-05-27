@@ -26,7 +26,6 @@ service cloud.firestore {
     // Validation Helpers
     function isValidProduct(data) {
       return data.keys().hasAll(['name', 'description', 'price', 'category', 'sizes', 'colors', 'images', 'inStock', 'createdAt']) &&
-             data.keys().size() == 9 &&
              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
              data.description is string && data.description.size() <= 2000 &&
              data.price is number && data.price >= 0 &&
@@ -35,7 +34,10 @@ service cloud.firestore {
              data.colors is list && data.colors.size() <= 20 &&
              data.images is list && data.images.size() <= 10 &&
              data.inStock is bool &&
-             data.createdAt is number;
+             data.createdAt is number &&
+             (!('stock' in data) || (data.stock is number && data.stock >= 0)) &&
+             (!('flashSalePrice' in data) || (data.flashSalePrice is number && data.flashSalePrice >= 0)) &&
+             (!('flashSaleEndTime' in data) || data.flashSaleEndTime is number);
     }
 
     function isValidOrder(data) {
@@ -69,8 +71,20 @@ service cloud.firestore {
       allow list, get: if true;
       allow create: if isAdmin() && isValidId(productId) && isValidProduct(incoming());
       allow update: if (isAdmin() && isValidId(productId) && isValidProduct(incoming())) &&
-        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'price', 'category', 'sizes', 'colors', 'images', 'inStock']));
+        (incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'price', 'category', 'sizes', 'colors', 'images', 'inStock', 'stock', 'flashSalePrice', 'flashSaleEndTime']));
+      allow update: if isSignedIn() && isValidId(productId) && isValidProduct(incoming()) &&
+        (incoming().diff(existing()).affectedKeys().hasOnly(['stock'])) && incoming().stock < existing().stock;
       allow delete: if isAdmin() && isValidId(productId);
+    }
+    
+    match /interactions/{interactionId} {
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && incoming().keys().hasAll(['userId', 'productId', 'type', 'timestamp']);
+      allow read: if true;
+    }
+
+    match /users/{userId}/wishlist/{productId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isValidId(productId);
     }
     
     match /orders/{orderId} {

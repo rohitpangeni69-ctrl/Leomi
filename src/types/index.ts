@@ -8,7 +8,23 @@ export interface Product {
   colors: string[];
   images: string[];
   inStock: boolean;
+  stock?: number;
+  flashSalePrice?: number;
+  flashSaleEndTime?: number;
   createdAt: number;
+}
+
+export interface WishlistItem {
+  productId: string;
+  addedAt: number;
+}
+
+export interface Interaction {
+  id?: string;
+  userId: string;
+  productId: string;
+  type: 'view' | 'click' | 'wishlist' | 'purchase';
+  timestamp: number;
 }
 
 export interface CartItem extends Product {

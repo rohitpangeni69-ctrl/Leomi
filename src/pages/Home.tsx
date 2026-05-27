@@ -1,22 +1,47 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ProductCard } from '../components/ProductCard';
-import { MOCK_PRODUCTS } from '../lib/mockData';
+import { RecommendedProducts } from '../components/RecommendedProducts';
+import { subscribeToProducts } from '../lib/api';
+import { Product } from '../types';
 
 export const Home = () => {
   const [searchParams] = useSearchParams();
   const categoryFilter = searchParams.get('category');
   
   const [sortBy, setSortBy] = useState('newest');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  let filteredProducts = MOCK_PRODUCTS;
+  useEffect(() => {
+    const unsubscribe = subscribeToProducts((data) => {
+      setProducts(data);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  let filteredProducts = [...products];
   if (categoryFilter) {
     filteredProducts = filteredProducts.filter(p => p.category === categoryFilter);
   }
 
-  // Sorting mock logic
+  // Sorting logic
   if (sortBy === 'price-low') filteredProducts.sort((a, b) => a.price - b.price);
   if (sortBy === 'price-high') filteredProducts.sort((a, b) => b.price - a.price);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
+        <div className="animate-pulse space-y-8">
+          <div className="h-8 bg-gray-200 w-1/4 rounded"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1,2,3,4].map(i => <div key={i} className="h-64 bg-gray-200 rounded"></div>)}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -50,6 +75,8 @@ export const Home = () => {
           No products found in this category.
         </div>
       )}
+      
+      <RecommendedProducts />
     </div>
   );
 };

@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import { formatPrice } from '../lib/utils';
 import { toast } from 'sonner';
+import { useAuthStore } from '../lib/firebase';
+import { createOrder } from '../lib/api';
+import { v4 as uuidv4 } from 'uuid';
+import { simulatePushNotification } from '../lib/fcm';
 
 export const Checkout = () => {
   const { items, total, clearCart } = useCartStore();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const esewaFormRef = useRef<HTMLFormElement>(null);
   
   const [paymentMethod, setPaymentMethod] = useState<'eSewa' | 'Khalti' | 'COD'>('eSewa');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState('');
 
   const [shippingAddress, setShippingAddress] = useState({
     fullName: '',
@@ -19,17 +26,68 @@ export const Checkout = () => {
     street: ''
   });
 
-  const handleCheckout = (e: React.FormEvent) => {
+  const [referralCode, setReferralCode] = useState('');
+
+  const subtotal = total();
+  const shippingFlow = 150; // Flat standard shipping in KTM
+  const orderTotal = subtotal + shippingFlow;
+
+  const handleCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      toast.error('Please login to checkout');
+      return;
+    }
     setIsProcessing(true);
     
-    // Fake payment processing
-    setTimeout(() => {
+    try {
+      const oid = uuidv4().replace(/-/g, '').substring(0, 20); // shortened UUID for eSewa
+      setCurrentOrderId(oid);
+      
+      const orderData = {
+        userId: user.uid,
+        items,
+        totalAmount: orderTotal,
+        status: 'Pending' as const,
+        shippingAddress,
+        paymentMethod,
+        paymentStatus: 'Pending' as const,
+      };
+
+      await createOrder(orderData, oid);
+
+      if (referralCode) {
+        // dynamic import or assume applyReferralCode is available
+        const { applyReferralCode } = await import('../lib/api');
+        const applied = await applyReferralCode(referralCode, user.uid);
+        if (applied) {
+          toast.success('Referral code applied!');
+        } else {
+          toast.error('Invalid referral code');
+        }
+      }
+
+      if (paymentMethod === 'eSewa') {
+        // Form submit directly since we have hidden form
+        setTimeout(() => {
+          if (esewaFormRef.current) {
+            esewaFormRef.current.submit();
+          }
+        }, 500);
+      } else if (paymentMethod === 'COD') {
+        clearCart();
+        toast.success('Order placed successfully (Cash on Delivery)');
+        simulatePushNotification('Order Confirmed!', `Your order ${oid} has been placed successfully.`);
+        navigate('/');
+      } else {
+        toast.error('Khalti not implemented in this demo. Proceed with COD or eSewa.');
+        setIsProcessing(false);
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error('Failed to create order: ' + error.message);
       setIsProcessing(false);
-      clearCart();
-      toast.success('Order placed successfully!');
-      navigate('/');
-    }, 2000);
+    }
   };
 
   if (items.length === 0) {
@@ -37,9 +95,8 @@ export const Checkout = () => {
     return null;
   }
 
-  const subtotal = total();
-  const shippingFlow = 150; // Flat standard shipping in KTM
-  const orderTotal = subtotal + shippingFlow;
+  const successUrl = `${window.location.origin}/payment-callback?q=su`;
+  const failureUrl = `${window.location.origin}/payment-callback?q=fu`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -92,6 +149,13 @@ export const Checkout = () => {
                   className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-gray-900 focus:border-gray-900"
                   value={shippingAddress.street}
                   onChange={e => setShippingAddress({...shippingAddress, street: e.target.value})}
+                />
+                <input
+                  type="text"
+                  placeholder="Referral Code (Optional)"
+                  className="w-full border border-gray-300 rounded-md p-3 text-sm focus:ring-gray-900 focus:border-gray-900"
+                  value={referralCode}
+                  onChange={e => setReferralCode(e.target.value.toUpperCase())}
                 />
               </div>
             </div>
@@ -162,6 +226,20 @@ export const Checkout = () => {
           </div>
         </div>
       </div>
+
+      {paymentMethod === 'eSewa' && currentOrderId && (
+        <form ref={esewaFormRef} action="https://uat.esewa.com.np/epay/main" method="POST" style={{ display: 'none' }}>
+          <input value={orderTotal} name="tAmt" type="hidden" />
+          <input value={subtotal} name="amt" type="hidden" />
+          <input value="0" name="txAmt" type="hidden" />
+          <input value="0" name="psc" type="hidden" />
+          <input value={shippingFlow} name="pdc" type="hidden" />
+          <input value="EPAYTEST" name="scd" type="hidden" />
+          <input value={currentOrderId} name="pid" type="hidden" />
+          <input value={`${successUrl}&oid=${currentOrderId}&amt=${orderTotal}`} type="hidden" name="su" />
+          <input value={`${failureUrl}&oid=${currentOrderId}&amt=${orderTotal}`} type="hidden" name="fu" />
+        </form>
+      )}
     </div>
   );
 };

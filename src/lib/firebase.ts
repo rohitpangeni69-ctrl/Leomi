@@ -3,8 +3,9 @@ import { getAuth, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { create } from 'zustand';
+import { subscribeToWishlist, useWishlistStore } from '../store/wishlistStore';
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId); // CRITICAL
 export const auth = getAuth();
 
@@ -83,9 +84,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   setReady: (isReady) => set({ isReady }),
 }));
 
+let wishlistUnsubscribe: (() => void) | null = null;
+
 onAuthStateChanged(auth, async (user) => {
   useAuthStore.getState().setUser(user);
+  
+  if (wishlistUnsubscribe) {
+    wishlistUnsubscribe();
+    wishlistUnsubscribe = null;
+    useWishlistStore.getState().setItems([]);
+  }
+
   if (user) {
+    wishlistUnsubscribe = subscribeToWishlist(user.uid);
     try {
       const userDoc = await getDocFromServer(doc(db, 'users', user.uid));
       if (userDoc.exists()) {

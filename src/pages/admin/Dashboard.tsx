@@ -1,6 +1,17 @@
 import React from 'react';
 import { formatPrice } from '../../lib/utils';
 import { TrendingUp, Package, ShoppingBag, Users } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+const data = [
+  { name: 'Mon', revenue: 4000 },
+  { name: 'Tue', revenue: 3000 },
+  { name: 'Wed', revenue: 2000 },
+  { name: 'Thu', revenue: 2780 },
+  { name: 'Fri', revenue: 1890 },
+  { name: 'Sat', revenue: 2390 },
+  { name: 'Sun', revenue: 3490 },
+];
 
 export const Dashboard = () => {
   const stats = [
@@ -30,10 +41,45 @@ export const Dashboard = () => {
         ))}
       </div>
 
-      <div className="mt-8 bg-white border border-gray-200 rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Activity</h2>
-        <div className="text-sm text-gray-500 text-center py-12">
-          Charts and analytics will appear here once connected to Firebase.
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Revenue Trends</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#111827" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#111827" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `Rs.${value}`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <Tooltip formatter={(value: number) => formatPrice(value)} />
+                <Area type="monotone" dataKey="revenue" stroke="#111827" fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Sales by Category</h2>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={[
+                { name: 'Women', sales: 4000 },
+                { name: 'Men', sales: 3000 },
+                { name: 'Accessories', sales: 2000 },
+              ]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <Tooltip />
+                <Bar dataKey="sales" fill="#111827" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
