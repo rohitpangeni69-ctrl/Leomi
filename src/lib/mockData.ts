@@ -1,0 +1,52 @@
+import { Product } from '../types';
+
+export const MOCK_PRODUCTS: Product[] = [
+  {
+    id: '1',
+    name: 'Minimalist Cotton T-Shirt',
+    description: 'A classic, comfortable cotton t-shirt perfect for everyday wear. Made with 100% organic cotton.',
+    price: 1500,
+    category: 'Men',
+    sizes: ['S', 'M', 'L', 'XL'],
+    colors: ['White', 'Black', 'Navy'],
+    images: ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=800'],
+    inStock: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: '2',
+    name: 'Relaxed Fit Linen Trousers',
+    description: 'Breathable linen trousers with a relaxed fit. Ideal for summer days.',
+    price: 3200,
+    category: 'Women',
+    sizes: ['XS', 'S', 'M', 'L'],
+    colors: ['Beige', 'Olive', 'Black'],
+    images: ['https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&q=80&w=800'],
+    inStock: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: '3',
+    name: 'Classic Leather Tote',
+    description: 'Spacious leather tote bag with minimal detailing. Perfect for work or weekend errands.',
+    price: 4500,
+    category: 'Accessories',
+    sizes: ['One Size'],
+    colors: ['Brown', 'Black'],
+    images: ['https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=800'],
+    inStock: true,
+    createdAt: Date.now(),
+  },
+  {
+    id: '4',
+    name: 'Oversized Denim Jacket',
+    description: 'Vintage-inspired oversized denim jacket. A versatile layering piece.',
+    price: 4800,
+    category: 'Women',
+    sizes: ['S', 'M', 'L'],
+    colors: ['Light Blue', 'Dark Wash'],
+    images: ['https://images.unsplash.com/photo-1543076447-215ad9ba6923?auto=format&fit=crop&q=80&w=800'],
+    inStock: true,
+    createdAt: Date.now(),
+  }
+];
