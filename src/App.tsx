@@ -16,7 +16,10 @@ import { Checkout } from './pages/Checkout';
 import { PaymentCallback } from './pages/PaymentCallback';
 import { Wishlist } from './pages/Wishlist';
 import { Account } from './pages/Account';
+import { TrackOrder } from './pages/TrackOrder';
 import { requestNotificationPermission } from './lib/fcm';
+import { ChatWidget } from './components/ChatWidget';
+import { Cursor } from './components/Cursor';
 
 // Admin Pages
 import { AdminLayout } from './pages/admin/AdminLayout';
@@ -36,7 +39,11 @@ function App() {
 
   return (
     <HelmetProvider>
+      <div className="hidden sm:block">
+        <Cursor />
+      </div>
       <BrowserRouter>
+
         <SEO />
         <Toaster position="top-right" />
         <Routes>
@@ -61,10 +68,12 @@ function App() {
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/wishlist" element={<Wishlist />} />
                     <Route path="/account" element={<Account />} />
+                    <Route path="/track-order" element={<TrackOrder />} />
                     <Route path="/payment-callback" element={<PaymentCallback />} />
                   </Routes>
                 </main>
                 <Footer />
+                <ChatWidget />
               </div>
             }
           />

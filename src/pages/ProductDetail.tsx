@@ -12,6 +12,8 @@ import { useWishlistStore } from '../store/wishlistStore';
 import { useAuthStore } from '../lib/firebase';
 import { logProductInteraction } from '../lib/recommendations';
 
+import { Reviews } from '../components/Reviews';
+
 export const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -26,6 +28,7 @@ export const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
+  const [isBouncing, setIsBouncing] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -97,6 +100,10 @@ export const ProductDetail = () => {
       toast.error('Please select size and color');
       return;
     }
+
+    setIsBouncing(true);
+    setTimeout(() => setIsBouncing(false), 300);
+
     addItem({
       ...product,
       quantity,
@@ -213,7 +220,10 @@ export const ProductDetail = () => {
             <button
               type="submit"
               disabled={outOfStock}
-              className="mt-8 flex w-full items-center justify-center rounded-md border border-transparent bg-gray-900 px-8 py-3 text-base font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className={cn(
+                "mt-8 flex w-full items-center justify-center rounded-md border border-transparent bg-gray-900 px-8 py-3 text-base font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-transform duration-200",
+                isBouncing ? "animate-button-bounce" : "active:scale-95"
+              )}
             >
               {outOfStock ? 'Out of Stock' : 'Add to Cart'}
             </button>
@@ -221,6 +231,7 @@ export const ProductDetail = () => {
         </div>
       </div>
       
+      {product && <Reviews productId={product.id} />}
       <RecommendedProducts />
     </div>
     </>

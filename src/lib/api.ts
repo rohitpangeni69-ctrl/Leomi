@@ -158,3 +158,50 @@ export const applyReferralCode = async (code: string, currentUserId: string): Pr
   
   return true;
 };
+
+// Reviews
+export const addReview = async (productId: string, userId: string, userName: string, rating: number, comment: string) => {
+  const newRef = doc(collection(db, 'reviews'));
+  await setDoc(newRef, {
+    productId,
+    userId,
+    userName,
+    rating,
+    comment,
+    createdAt: Date.now()
+  });
+};
+
+export const subscribeToReviews = (productId: string, callback: (reviews: any[]) => void) => {
+  const q = query(collection(db, 'reviews'), where('productId', '==', productId), orderBy('createdAt', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const reviews: any[] = [];
+    snapshot.forEach((doc) => {
+      reviews.push({ id: doc.id, ...doc.data() });
+    });
+    callback(reviews);
+  });
+};
+
+// Chat
+export const sendChatMessage = async (userId: string, userName: string, text: string) => {
+  const newRef = doc(collection(db, 'chat_messages'));
+  await setDoc(newRef, {
+    userId,
+    userName,
+    text,
+    isAdmin: false,
+    createdAt: Date.now()
+  });
+};
+
+export const subscribeToChatMessages = (userId: string, callback: (messages: any[]) => void) => {
+  const q = query(collection(db, 'chat_messages'), where('userId', '==', userId), orderBy('createdAt', 'asc'));
+  return onSnapshot(q, (snapshot) => {
+    const messages: any[] = [];
+    snapshot.forEach((doc) => {
+      messages.push({ id: doc.id, ...doc.data() });
+    });
+    callback(messages);
+  });
+};

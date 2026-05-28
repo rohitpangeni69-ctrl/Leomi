@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Search, Menu, User, LogOut, Heart, Globe } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
@@ -7,6 +7,8 @@ import { auth, useAuthStore } from '../lib/firebase';
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+import { motion, useScroll, useMotionValueEvent } from 'motion/react';
+import { cn } from '../lib/utils';
 
 export const Navbar = () => {
   const items = useCartStore(state => state.items);
@@ -14,6 +16,13 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuthStore();
   const { t, i18n } = useTranslation();
+  
+  const { scrollY } = useScroll();
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    setIsScrolled(latest > 50);
+  });
 
   const handleLogin = async () => {
     try {
@@ -40,9 +49,17 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+    <motion.nav 
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      className={cn(
+        "fixed top-0 w-full z-50 transition-all duration-300 ease-in-out border-b border-transparent",
+        isScrolled ? "bg-white/70 backdrop-blur-md border-gray-100 py-2 shadow-sm" : "bg-transparent py-4"
+      )}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+        <div className="flex justify-between h-12 items-center">
           <div className="flex items-center">
             <button className="p-2 -ml-2 mr-2 md:hidden text-gray-600">
               <Menu className="h-6 w-6" />
@@ -54,6 +71,7 @@ export const Navbar = () => {
               <Link to="/?category=Women" className="text-sm font-medium text-gray-600 hover:text-gray-900">{t('Women')}</Link>
               <Link to="/?category=Men" className="text-sm font-medium text-gray-600 hover:text-gray-900">{t('Men')}</Link>
               <Link to="/?category=Accessories" className="text-sm font-medium text-gray-600 hover:text-gray-900">{t('Accessories')}</Link>
+              <Link to="/track-order" className="text-sm font-medium text-gray-600 hover:text-gray-900">Track Order</Link>
             </div>
           </div>
           <div className="flex items-center space-x-4 md:space-x-6">
@@ -99,6 +117,6 @@ export const Navbar = () => {
           </div>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 };
